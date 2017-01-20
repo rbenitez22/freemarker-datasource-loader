@@ -7,12 +7,10 @@ package com.iamcodepoet.freemarker;
 
 import com.iamcodepoet.freemarker.sql.JdbcMetaData;
 import com.iamcodepoet.freemarker.sql.TemplateSourceDao;
-import com.iamcodepoet.freemarker.util.Pair;
 import freemarker.cache.TemplateLoader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
-import java.sql.Connection;
 import java.util.Date;
 import java.util.Locale;
 import java.util.regex.Matcher;
@@ -51,13 +49,15 @@ public class DataSourceTemplateLoader implements TemplateLoader
             throw new IOException("Cannot find template with a NULL or EMPTY name");
         }
         
-        Pair<String,Locale> pair =splitLocalizedName(localizedTemplateName);
-            
+        Object[] parts =splitLocalizedName(localizedTemplateName);
+        String name=(String)parts[0];
+        Locale locale=(Locale)parts[1];
+        
         TemplateSource source;
         
         try (TemplateSourceDao dao= new TemplateSourceDao(dataSource.getConnection(),metadata))
         {
-            source = dao.queryByName(pair.getLeft(),pair.getRight());
+            source = dao.queryByName(name,locale);
         }
         catch (Exception e) 
         {
@@ -68,10 +68,13 @@ public class DataSourceTemplateLoader implements TemplateLoader
         return source;
     }
 
-    private Pair<String,Locale> splitLocalizedName(String localizedTemplateName)
+    private Object[] splitLocalizedName(String localizedTemplateName)
     {
-        Pair<String,Locale> pair;
+        Object[] tokens= new Object[2];
         
+        //defaults
+        tokens[0] = localizedTemplateName;
+        tokens[1] = Locale.getDefault();
         
         if(isLocalizedName(localizedTemplateName))
         {
@@ -84,20 +87,12 @@ public class DataSourceTemplateLoader implements TemplateLoader
                 String languageString=matcher.group(0);
                 String languageTag = languageString.substring(1).replace("_", "-");
                 Locale locale=Locale.forLanguageTag(languageTag);
-                pair=new Pair<>(name,locale);
+                tokens[0]= name;
+                tokens[1]= locale;
             }
-            else
-            {
-                pair= new Pair<>(localizedTemplateName,Locale.getDefault());
-                
-            }
-        }
-        else
-        {
-            pair= new Pair<>(localizedTemplateName,Locale.getDefault());
         }
         
-        return pair;
+        return tokens;
     }
     
     private boolean isLocalizedName(String name)
@@ -145,8 +140,4 @@ public class DataSourceTemplateLoader implements TemplateLoader
        //do nothing
     }
 
-    
-    
-    
-    
 }
