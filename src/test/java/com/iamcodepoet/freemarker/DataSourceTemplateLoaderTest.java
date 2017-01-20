@@ -5,8 +5,6 @@
  */
 package com.iamcodepoet.freemarker;
 
-import com.iamcodepoet.freemarker.sql.JdbcTemplateSource;
-import freemarker.cache.TemplateLoader;
 import freemarker.core.ParseException;
 import freemarker.template.Configuration;
 import freemarker.template.MalformedTemplateNameException;
@@ -57,44 +55,6 @@ public class DataSourceTemplateLoaderTest
             throw new RuntimeException(e);
         }
     }
-    
-    @AfterClass public final static void afterclass()
-    {
-        
-    }
-    
-    //@Test
-    public void testLocale()
-    {
-        String name="Test 1";
-        String regex="_[a-z]{2}(_([a-zA-Z]{2}){1,2})?_[A-Z]{2}$";
-        for(Locale locale : Locale.getAvailableLocales())
-        {
-            if(locale.getLanguage().isEmpty() || locale.getCountry().isEmpty()){continue;}
-            String localeString="_" + locale.getLanguage() + "_" + locale.getCountry();
-            String localizedName=name + localeString;
-            boolean matches=localizedName.matches(".*"+regex);
-            System.out.printf("Locale: %s, String: %s; Ends With Locale string: %s\n",locale,localizedName,matches);
-            
-            
-            Pattern pattern= Pattern.compile(regex);
-            Matcher matcher = pattern.matcher(localizedName);
-            if(matcher.find())
-            {
-                String matchedLocaleString=matcher.group();
-                String deLocalizedName=localizedName.substring(0,matcher.start());
-                Locale locale2=Locale.forLanguageTag(matchedLocaleString.substring(1).replace("_", "-"));
-                System.out.printf("Matched Locale String: %s, De-Localized Name: %s, Build Locale: Lang(%s), Country(%s)\n",matchedLocaleString,deLocalizedName,locale2.getLanguage(),locale2.getCountry());
-                
-            }
-             
-            
-          //  assert matches == true;
-            
-            
-        }
-    }
-       
      
     @Test public void testLoader() throws MalformedTemplateNameException, ParseException, IOException, TemplateException, SQLException
     {
@@ -109,7 +69,7 @@ public class DataSourceTemplateLoaderTest
             Configuration config= new Configuration(version);
             config.setTemplateLoader(loader);
             
-            Template template=config.getTemplate("Profound Message");
+            Template template1=config.getTemplate("Profound Message");
             
             Map<String,String> model= new HashMap<>();
             model.put("noun1", "Pinguins");
@@ -117,12 +77,20 @@ public class DataSourceTemplateLoaderTest
             model.put("noun2", "aid");
             model.put("noun3", "Linux distro");
             
-            StringWriter writer= new  StringWriter();
+            StringWriter writer1= new  StringWriter();
             
-            template.process(model, writer);
+            template1.process(model, writer1);
             
-            System.out.println("Msg: " + writer.toString());
-            assert true;
+            System.out.println("Message test: " + writer1.toString());
+            
+            Template template2 = config.getTemplate("Cover Letter Template");
+            model = new HashMap<>();
+            model.put("hiringManager", "Miss Ada Byron");
+            
+            System.out.printf("--%s\n",template2.getName());
+            StringWriter writer2 = new StringWriter();
+            template2.process(model, writer2);
+            System.out.printf("Cover Letter: %s\n\t",writer2.toString());
       
     }
 
