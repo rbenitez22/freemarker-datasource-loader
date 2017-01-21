@@ -87,12 +87,15 @@ public  class ConfigProvider
     public Connection getDatabaseConnection(String configName, String urlPrefix) throws SQLException
     {
         Properties props;
-        try {
+        try 
+        {
             props = getConfig(configName);
         }
-        catch (IOException e) {
+        catch (IOException e) 
+        {
             throw new SQLException("Unable to create connection.  Unable to load database configuration file", e);
         }
+        
         String host = props.getProperty("host");
         String port = props.getProperty("port");
         String db = props.getProperty("databaseName");
