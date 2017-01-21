@@ -5,8 +5,6 @@
  */
 package com.iamcodepoet.freemarker.sql;
 
-import java.util.Locale;
-
 /**
  *
  * @author Roberto C. Benitez
