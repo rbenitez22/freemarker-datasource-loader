@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- *
+ *A brief implementation of a Data Access Object (DAO) for template sources.
  * @author Roberto C. Benitez
  */
 public class TemplateSourceDao implements AutoCloseable
@@ -45,23 +45,30 @@ public class TemplateSourceDao implements AutoCloseable
         this.metadata = metadata;
     }
     
-    private String getLanguageTag(Locale locale)
-    {
-        return String.format("%s-%s", locale.getLanguage(), locale.getCountry());
-    }
-
-    public TemplateSource queryByName(String localizedTemplateName, Locale locale) throws SQLException, IOException
+    /**
+     * Query a template by Name (and {@link Locale}).  Whilst Freemarker passes a 
+     * localized template name, it (may) be best to store/handle the template name and locale information separately.
+     * As such, This method takes a name and {@link Locale} to perform a query.  The expectation is that a database record 
+     * may have many records with the same template name (but different locales).  Furthermore, it is expected (nay, required), that the {@Locale} information
+     * be stored as a <a href="https://tools.ietf.org/html/bcp47">well-formed IETF BCP 47 language tag</a>--this is provided by Java via {@link  Locale#toLanguageTag()}
+     * @param templateName
+     * @param locale
+     * @return {@link TemplateSource}
+     * @throws SQLException
+     * @throws IOException 
+     */
+    public TemplateSource queryByName(String templateName, Locale locale) throws SQLException, IOException
     {
         TemplateSource source;
         
-        String languageTag = getLanguageTag(locale);
-        String nameColumn = quote(metadata.getNameColumn());
-        String localeColumn = quote(metadata.getLocaleColumn());
+        String languageTag = locale.toLanguageTag();
+        String nameColumn = quoteIdentifierName(metadata.getNameColumn());
+        String localeColumn = quoteIdentifierName(metadata.getLocaleColumn());
         String where = String.format(" WHERE %s = ? AND %s= ?", nameColumn, localeColumn);
         String sql = getSelectSql() + " " + where;
         try (final PreparedStatement stmt = connection.prepareStatement(sql)) 
         {
-            stmt.setString(1, localizedTemplateName);
+            stmt.setString(1, templateName);
             stmt.setString(2, languageTag);
             try (final ResultSet rst = stmt.executeQuery()) 
             {
@@ -70,33 +77,45 @@ public class TemplateSourceDao implements AutoCloseable
                 }
                 else 
                 {
-                    throw new IOException("Template not found. " + localizedTemplateName);
+                    throw new IOException("Template not found. " + templateName);
                 }
             }
         }
         return source;
     }
 
-    private String quote(String string) throws SQLException
+    /**
+     * Quote an identifier name with the appropriate Identifier Quote String, as
+     * specified by the database.
+     * @param identifierName
+     * @return quoted String
+     * @throws SQLException 
+     */
+    private String quoteIdentifierName(String identifierName) throws SQLException
     {
         if(identQuoteString == null)
         {
             identQuoteString = connection.getMetaData().getIdentifierQuoteString();
         }
         
-        return identQuoteString + string + identQuoteString;
+        return identQuoteString + identifierName + identQuoteString;
     }
     
+    /**
+     * Get a properly quoted table name--that includes the schema if supplied (e.g. "public"."templates")
+     * @return table name
+     * @throws SQLException 
+     */
     public String getFullTableName() throws SQLException
     {
         String name;
         if (metadata.getSchemaName() == null || metadata.getSchemaName().isEmpty()) 
         {
-            name = quote(metadata.getTableName());
+            name = quoteIdentifierName(metadata.getTableName());
         }
         else 
         {
-            name = quote(metadata.getSchemaName()) + "." + quote(metadata.getTableName());
+            name = quoteIdentifierName(metadata.getSchemaName()) + "." + quoteIdentifierName(metadata.getTableName());
         }
         
         return name;
@@ -126,6 +145,11 @@ public class TemplateSourceDao implements AutoCloseable
         return String.format("SELECT * FROM %s", table);
     }
 
+    /**
+     * Query all template sources from the database.
+     * @return List of template sources
+     * @throws SQLException 
+     */
     public List<TemplateSource> query() throws SQLException
     {
         List<TemplateSource> sources = new ArrayList<>();
@@ -144,6 +168,12 @@ public class TemplateSourceDao implements AutoCloseable
         return sources;
     }
 
+    /**
+     * Create a new {@link JdbcTemplateSource} from the current {@link ResultSet} row.
+     * @param rst
+     * @return {@link TemplateSource}
+     * @throws SQLException 
+     */
     private TemplateSource createSourceFromResultSet(final ResultSet rst) throws SQLException
     {
         TemplateSource source = new JdbcTemplateSource();
@@ -163,12 +193,19 @@ public class TemplateSourceDao implements AutoCloseable
         return source;
     }
 
+    /**
+     * Delete a template source matching this name and locale.
+     * @param templateName
+     * @param locale
+     * @return count of rows deleted
+     * @throws SQLException 
+     */
     public int delete(String templateName, Locale locale) throws SQLException
     {
         int count;
-        String nameCol = quote(metadata.getNameColumn());
-        String localeCol = quote(metadata.getLocaleColumn());
-        String table = quote(metadata.getTableName());
+        String nameCol = quoteIdentifierName(metadata.getNameColumn());
+        String localeCol = quoteIdentifierName(metadata.getLocaleColumn());
+        String table = quoteIdentifierName(metadata.getTableName());
         
         String sql = String.format("DELETE FROM %s WHERE %s = ? AND %s= ?", table, nameCol, localeCol);
         try (final PreparedStatement stmt = connection.prepareStatement(sql)) {
@@ -180,26 +217,24 @@ public class TemplateSourceDao implements AutoCloseable
         return count;
     }
 
+    /**
+     * Insert a new template source record.  
+     * @param source
+     * @throws SQLException if the name or locale fields are null; a template
+     * this name and locale are present in the database; or {@link SQLException} throw by the driver,
+     * such as incorrectly specified values in the {@link JdbcMetaData} supplied to the DAO instance.
+     */
     public void insert(JdbcTemplateSource source) throws SQLException
     {
-        if (source.getName() == null || source.getName().isEmpty()) 
-        {
-            throw new SQLException("Template Source Name is missing. Cannot insert record");
-        }
-        
-        if (exists(source.getName(), source.getLocale())) 
-        {
-            String msg = String.format("Template '%s (%s)' already exists", source.getName(), source.getLocale().toLanguageTag());
-            throw new SQLException(msg);
-        }
+        assertCanInsert(source);
             
         String table = getFullTableName();
-        String idColumn = quote(metadata.getIdColumn());
-        String nameColmn = quote(metadata.getNameColumn());
-        String localeColumn = quote(metadata.getLocaleColumn());
-        String sourceColumn = quote(metadata.getSourceColumn());
-        String createColumn = quote(metadata.getDateCreatedColumn());
-        String modColumn = quote(metadata.getLastModifiedColumn());
+        String idColumn = quoteIdentifierName(metadata.getIdColumn());
+        String nameColmn = quoteIdentifierName(metadata.getNameColumn());
+        String localeColumn = quoteIdentifierName(metadata.getLocaleColumn());
+        String sourceColumn = quoteIdentifierName(metadata.getSourceColumn());
+        String createColumn = quoteIdentifierName(metadata.getDateCreatedColumn());
+        String modColumn = quoteIdentifierName(metadata.getLastModifiedColumn());
         
         String sql = String.format("INSERT INTO %s(%s,%s,%s,%s,%s,%s) VALUES(?,?,?,?,?,?)", table, idColumn, nameColmn, localeColumn, sourceColumn, createColumn, modColumn);
         
@@ -226,15 +261,39 @@ public class TemplateSourceDao implements AutoCloseable
         }
     }
 
+    private void assertCanInsert(JdbcTemplateSource source) throws SQLException
+    {
+        if (source.getName() == null || source.getName().isEmpty())
+        {
+            throw new SQLException("Template Source Name is missing. Cannot insert record");
+        }
+        
+        if(source.getLocale() == null)
+        {
+            throw new SQLException("Locale field is null");
+        }
+        
+        if (exists(source.getName(), source.getLocale()))
+        {
+            String msg = String.format("Template '%s (%s)' already exists", source.getName(), source.getLocale().toLanguageTag());
+            throw new SQLException(msg);
+        }
+    }
 
+
+    /**
+     * Update this template source.
+     * @param source
+     * @throws SQLException 
+     */
     public void update(JdbcTemplateSource source) throws SQLException
     {
         String table = getFullTableName();
-        String idColumn = quote(metadata.getIdColumn());
-        String nameColmn = quote(metadata.getNameColumn());
-        String localeColumn = quote(metadata.getLocaleColumn());
-        String sourceColumn = quote(metadata.getSourceColumn());
-        String modColumn = quote(metadata.getLastModifiedColumn());
+        String idColumn = quoteIdentifierName(metadata.getIdColumn());
+        String nameColmn = quoteIdentifierName(metadata.getNameColumn());
+        String localeColumn = quoteIdentifierName(metadata.getLocaleColumn());
+        String sourceColumn = quoteIdentifierName(metadata.getSourceColumn());
+        String modColumn = quoteIdentifierName(metadata.getLastModifiedColumn());
         
         String sql = String.format("UPDATE TABLE %s SET %s = ? %s= ?,%s = ?,%s =? WHERE %s", table, nameColmn, localeColumn, sourceColumn, modColumn, idColumn);
         
@@ -250,6 +309,13 @@ public class TemplateSourceDao implements AutoCloseable
         }
     }
 
+    /**
+     * Check whether a template source record with this name and locale already exists.
+     * @param templateName
+     * @param locale
+     * @return
+     * @throws SQLException 
+     */
     private boolean exists(String templateName, Locale locale) throws SQLException
     {
         try 
