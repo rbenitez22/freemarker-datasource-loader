@@ -96,16 +96,15 @@ public class JdbcTemplateSource implements TemplateSource
         return new Date(dateCreated.getTime());
     }
 
+    @Override
     public Locale getLocale()
     {
         return locale;
     }
 
+    @Override
     public void setLocale(Locale locale)
     {
         this.locale = locale;
     }
-    
-    
-    
 }
