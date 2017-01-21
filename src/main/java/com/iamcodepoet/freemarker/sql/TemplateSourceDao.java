@@ -5,7 +5,6 @@
  */
 package com.iamcodepoet.freemarker.sql;
 
-import com.iamcodepoet.freemarker.DataSourceTemplateLoader;
 import com.iamcodepoet.freemarker.TemplateSource;
 import java.io.IOException;
 import java.sql.Connection;
@@ -89,11 +88,6 @@ public class TemplateSourceDao implements AutoCloseable
         }
         
         return name;
-    }
-
-    public String quote(String string, String quoteString)
-    {
-        return quoteString + string + quoteString;
     }
 
     private long getCount() throws SQLException
@@ -187,27 +181,28 @@ public class TemplateSourceDao implements AutoCloseable
             throw new SQLException(msg);
         }
             
-        String qs = connection.getMetaData().getIdentifierQuoteString();
         String table = getFullTableName();
-        String idColumn = quote(metadata.getIdColumn(), qs);
-        String nameColmn = quote(metadata.getNameColumn(), qs);
-        String localeColumn = quote(metadata.getLocaleColumn(), qs);
-        String sourceColumn = quote(metadata.getSourceColumn(), qs);
-        String createColumn = quote(metadata.getDateCreatedColumn(), qs);
-        String modColumn = quote(metadata.getLastModifiedColumn(), qs);
+        String idColumn = quote(metadata.getIdColumn());
+        String nameColmn = quote(metadata.getNameColumn());
+        String localeColumn = quote(metadata.getLocaleColumn());
+        String sourceColumn = quote(metadata.getSourceColumn());
+        String createColumn = quote(metadata.getDateCreatedColumn());
+        String modColumn = quote(metadata.getLastModifiedColumn());
         
         String sql = String.format("INSERT INTO %s(%s,%s,%s,%s,%s,%s) VALUES(?,?,?,?,?,?)", table, idColumn, nameColmn, localeColumn, sourceColumn, createColumn, modColumn);
         
         try (final PreparedStatement stmt = connection.prepareStatement(sql)) 
         {
             Date now = new Date(System.currentTimeMillis());
-            if (source.getId() < 1) {
+            if (source.getId() < 1) 
+            {
                 long id = getCount() + 1;
-                if (id < 1) {
+                if (id < 1) 
+                {
                     throw new SQLException("Missing Template Source ID, and failed to generate one");
                 }
-                source.setId(id);
             }
+            
             stmt.setLong(1, source.getId());
             stmt.setString(2, source.getName());
             String languageTag = source.getLocale().toLanguageTag();
