@@ -28,7 +28,7 @@ import java.sql.SQLException;
 import java.util.Properties;
 
 /**
- *
+ *A brief config provider--centralizes paths/config files
  * @author Roberto C. Benitez
  */
 public  class ConfigProvider
