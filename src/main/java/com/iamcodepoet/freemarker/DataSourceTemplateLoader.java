@@ -139,11 +139,11 @@ public class DataSourceTemplateLoader implements TemplateLoader
     }
 
     @Override
-    public Reader getReader(Object object, String encoding) throws IOException
+    public Reader getReader(Object source, String encoding) throws IOException
     {
-        assertValidTemplateSourceParameter(object);
+        assertValidTemplateSourceParameter(source);
         
-        return new StringReader(((TemplateSource)object).getSource());
+        return new StringReader(((TemplateSource)source).getSource());
     }
 
     @Override
