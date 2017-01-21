@@ -46,6 +46,11 @@ public  class ConfigProvider
     {
         this.basePath = basePath;
     }
+
+    public String getBasePath()
+    {
+        return basePath;
+    }
     
     public Properties getConfig(String name) throws IOException
     {
