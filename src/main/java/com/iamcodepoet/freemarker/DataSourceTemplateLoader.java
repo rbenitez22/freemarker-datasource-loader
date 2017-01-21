@@ -30,7 +30,9 @@ import java.util.regex.Pattern;
 import javax.sql.DataSource;
 
 /**
- *
+ *A {@link  TemplateLoader} implementation that loads data from a database table, via a {@link  DataSource}
+ * The database work is performed by the helper (DAO) class {@link TemplateSourceDao}.
+ * 
  * @author Roberto C. Benitez
  */
 public class DataSourceTemplateLoader implements TemplateLoader
@@ -80,6 +82,13 @@ public class DataSourceTemplateLoader implements TemplateLoader
         return source;
     }
 
+    /**
+     * The <b>localizedTemplateName</b> will arrive as a localized name (e.g. &lt;template name&gt;_en_US).
+     * The database table stores the name and language information in separate fields, thus, the localized name as passed
+     * must be split, and the language information converted to a {@link Locale}.
+     * @param localizedTemplateName
+     * @return Object array of template information tokens (String/Locale)
+     */
     private Object[] splitLocalizedName(String localizedTemplateName)
     {
         Object[] tokens= new Object[2];
