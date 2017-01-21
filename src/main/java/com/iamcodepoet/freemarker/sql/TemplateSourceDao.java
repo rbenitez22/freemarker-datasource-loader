@@ -25,6 +25,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -229,18 +230,14 @@ public class TemplateSourceDao implements AutoCloseable
         assertCanInsert(source);
             
         String table = getFullTableName();
-        String idColumn = quoteIdentifierName(metadata.getIdColumn());
-        String nameColmn = quoteIdentifierName(metadata.getNameColumn());
-        String localeColumn = quoteIdentifierName(metadata.getLocaleColumn());
-        String sourceColumn = quoteIdentifierName(metadata.getSourceColumn());
-        String createColumn = quoteIdentifierName(metadata.getDateCreatedColumn());
-        String modColumn = quoteIdentifierName(metadata.getLastModifiedColumn());
-        
-        String sql = String.format("INSERT INTO %s(%s,%s,%s,%s,%s,%s) VALUES(?,?,?,?,?,?)", table, idColumn, nameColmn, localeColumn, sourceColumn, createColumn, modColumn);
+
+        String sql=createInsertStatement(table,metadata.getIdColumn(),metadata.getNameColumn()
+                                        ,metadata.getLocaleColumn(),metadata.getSourceColumn()
+                                        ,metadata.getDateCreatedColumn(),metadata.getLastModifiedColumn());
         
         try (final PreparedStatement stmt = connection.prepareStatement(sql)) 
         {
-            Date now = new Date(System.currentTimeMillis());
+            Timestamp now= new Timestamp(System.currentTimeMillis());
             if (source.getId() < 1) 
             {
                 long id = getCount() + 1;
@@ -248,17 +245,43 @@ public class TemplateSourceDao implements AutoCloseable
                 {
                     throw new SQLException("Missing Template Source ID, and failed to generate one");
                 }
+                source.setId(id);
             }
+            
+            source.setDateCreated(now);
+            source.setLastModified(now);
             
             stmt.setLong(1, source.getId());
             stmt.setString(2, source.getName());
             String languageTag = source.getLocale().toLanguageTag();
             stmt.setString(3, languageTag);
             stmt.setString(4, source.getSource());
-            stmt.setDate(5, now);
-            stmt.setDate(6, now);
+            stmt.setTimestamp(5, now);
+            stmt.setTimestamp(6, now);
             stmt.executeUpdate();
         }
+    }
+    
+    private String createInsertStatement(String tableName,String ... columns) throws SQLException
+    {
+        StringBuilder names = new StringBuilder();
+        StringBuilder vars= new StringBuilder();
+        
+        for(String column : columns)
+        {
+            String quoted=quoteIdentifierName(column);
+            
+            if(names.length() > 0)
+            {
+                names.append(",");
+                vars.append(",");
+            }
+            names.append(quoted);
+            vars.append("?");
+        }
+            
+        return String.format("INSERT INTO %s (%s) VALUES(%s)", tableName,names.toString(),vars.toString());
+        
     }
 
     private void assertCanInsert(JdbcTemplateSource source) throws SQLException
