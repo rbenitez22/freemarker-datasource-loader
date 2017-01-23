@@ -24,10 +24,9 @@ import java.util.Locale;
  *
  * @author Roberto C. Benitez
  */
-public interface TemplateSource
+public interface TemplateSource extends TemplateName
 {
     void setName(String name);
-    String getName();
     
     void setSource(String source);
     String getSource();
@@ -39,5 +38,4 @@ public interface TemplateSource
     Date getDateCreated();
     
     void setLocale(Locale locale);
-    Locale getLocale();
 }
