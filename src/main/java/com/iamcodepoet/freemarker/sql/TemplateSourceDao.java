@@ -17,7 +17,10 @@
  */
 package com.iamcodepoet.freemarker.sql;
 
+import com.iamcodepoet.freemarker.DefaultTemplateName;
+import com.iamcodepoet.freemarker.TemplateName;
 import com.iamcodepoet.freemarker.TemplateSource;
+import com.iamcodepoet.freemarker.util.Experimental;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.Date;
@@ -47,29 +50,44 @@ public class TemplateSourceDao implements AutoCloseable
     }
     
     /**
+     * This method performs a name search using the {@link #queryByName(com.iamcodepoet.freemarker.TemplateName) method.
+     * Essentially, this methods service to confirm that named template exists in the database.
+     * @param localizedName
+     * @return 
+     * @throws java.sql.SQLException 
+     * @throws java.io.IOException thrown if the named template does not exist
+     */
+    @Experimental
+    public TemplateName getTemplateNameForLocalizedName(String localizedName) throws SQLException, IOException
+    {
+        TemplateName searchName=DefaultTemplateName.fromLocalizedName(localizedName);
+        
+        return queryByName(searchName);
+    }
+    
+    /**
      * Query a template by Name (and {@link Locale}).  Whilst Freemarker passes a 
      * localized template name, it (may) be best to store/handle the template name and locale information separately.
      * As such, This method takes a name and {@link Locale} to perform a query.  The expectation is that a database record 
-     * may have many records with the same template name (but different locales).  Furthermore, it is expected (nay, required), that the {@Locale} information
+     * may have many records with the same template name (but different locales).  Furthermore, it is expected (nay, required), that the {@link Locale} information
      * be stored as a <a href="https://tools.ietf.org/html/bcp47">well-formed IETF BCP 47 language tag</a>--this is provided by Java via {@link  Locale#toLanguageTag()}
-     * @param templateName
-     * @param locale
+     * @param name
      * @return {@link TemplateSource}
      * @throws SQLException
      * @throws IOException 
      */
-    public TemplateSource queryByName(String templateName, Locale locale) throws SQLException, IOException
+    public TemplateSource queryByName(TemplateName name) throws SQLException, IOException
     {
         TemplateSource source;
         
-        String languageTag = locale.toLanguageTag();
+        String languageTag = name.getLocale().toLanguageTag();
         String nameColumn = quoteIdentifierName(metadata.getNameColumn());
         String localeColumn = quoteIdentifierName(metadata.getLocaleColumn());
         String where = String.format(" WHERE %s = ? AND %s= ?", nameColumn, localeColumn);
         String sql = getSelectSql() + " " + where;
         try (final PreparedStatement stmt = connection.prepareStatement(sql)) 
         {
-            stmt.setString(1, templateName);
+            stmt.setString(1, name.getName());
             stmt.setString(2, languageTag);
             try (final ResultSet rst = stmt.executeQuery()) 
             {
@@ -78,7 +96,7 @@ public class TemplateSourceDao implements AutoCloseable
                 }
                 else 
                 {
-                    throw new IOException("Template not found. " + templateName);
+                    throw new IOException("Template not found. " + name.getLocalizedName());
                 }
             }
         }
@@ -206,7 +224,7 @@ public class TemplateSourceDao implements AutoCloseable
         int count;
         String nameCol = quoteIdentifierName(metadata.getNameColumn());
         String localeCol = quoteIdentifierName(metadata.getLocaleColumn());
-        String table = quoteIdentifierName(metadata.getTableName());
+        String table = getFullTableName();
         
         String sql = String.format("DELETE FROM %s WHERE %s = ? AND %s= ?", table, nameCol, localeCol);
         try (final PreparedStatement stmt = connection.prepareStatement(sql)) {
@@ -296,7 +314,7 @@ public class TemplateSourceDao implements AutoCloseable
             throw new SQLException("Locale field is null");
         }
         
-        if (exists(source.getName(), source.getLocale()))
+        if (exists(source))
         {
             String msg = String.format("Template '%s (%s)' already exists", source.getName(), source.getLocale().toLanguageTag());
             throw new SQLException(msg);
@@ -339,11 +357,11 @@ public class TemplateSourceDao implements AutoCloseable
      * @return
      * @throws SQLException 
      */
-    private boolean exists(String templateName, Locale locale) throws SQLException
+    private boolean exists(TemplateName name) throws SQLException
     {
         try 
         {
-            TemplateSource src = queryByName(templateName, locale);
+            TemplateSource src = queryByName(name);
             return src != null;
         }
         catch (IOException e) 
