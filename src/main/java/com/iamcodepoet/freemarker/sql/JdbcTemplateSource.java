@@ -59,6 +59,14 @@ public class JdbcTemplateSource implements TemplateSource
     }
 
     @Override
+    public String getLocalizedName()
+    {
+        if(locale == null){locale = Locale.getDefault();}
+        
+        return String.format("%s_%s_%s", name,locale.getLanguage(),locale.getCountry());
+    }
+
+    @Override
     public void setSource(String source)
     {
         this.source = source;
@@ -119,4 +127,12 @@ public class JdbcTemplateSource implements TemplateSource
     {
         this.locale = locale;
     }
+
+    @Override
+    public String toString()
+    {
+        return getLocalizedName();
+    }
+    
+    
 }
