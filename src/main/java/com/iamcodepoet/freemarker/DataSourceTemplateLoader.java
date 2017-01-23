@@ -19,14 +19,12 @@ package com.iamcodepoet.freemarker;
 
 import com.iamcodepoet.freemarker.sql.JdbcMetaData;
 import com.iamcodepoet.freemarker.sql.TemplateSourceDao;
+import com.iamcodepoet.freemarker.util.Experimental;
 import freemarker.cache.TemplateLoader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.Date;
-import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import javax.sql.DataSource;
 
 /**
@@ -37,8 +35,6 @@ import javax.sql.DataSource;
  */
 public class DataSourceTemplateLoader implements TemplateLoader
 {
-    public final static String LOCALIZED_NAME_REGEX="_[a-z]{2}(_([a-zA-Z]{2}){1,2})?_[A-Z]{2}$";
-    
     private final JdbcMetaData metadata;
     
     private final DataSource dataSource;
@@ -56,22 +52,21 @@ public class DataSourceTemplateLoader implements TemplateLoader
         
     }
     
-    @Override public TemplateSource findTemplateSource(String localizedTemplateName) throws IOException
+    @Experimental(description = "This implementation is somewhat of a hack. queryByName actually returns a TemplateSource (which extends TemplateName)--consider reteurn just a name instead? ")
+    @Override public TemplateName findTemplateSource(String localizedTemplateName) throws IOException
     {
         if(localizedTemplateName == null || localizedTemplateName.isEmpty())
         {
             throw new IOException("Cannot find template with a NULL or EMPTY name");
         }
         
-        Object[] parts =splitLocalizedName(localizedTemplateName);
-        String name=(String)parts[0];
-        Locale locale=(Locale)parts[1];
+        TemplateName searchName=DefaultTemplateName.fromLocalizedName(localizedTemplateName);
         
-        TemplateSource source;
+        TemplateName name;
         
         try (TemplateSourceDao dao= new TemplateSourceDao(dataSource.getConnection(),metadata))
         {
-            source = dao.queryByName(name,locale);
+            name = dao.queryByName(searchName);
         }
         catch (Exception e) 
         {
@@ -79,80 +74,75 @@ public class DataSourceTemplateLoader implements TemplateLoader
             throw new IOException(root.getMessage(), root);
         }
         
-        return source;
+        return name;
     }
 
-    /**
-     * The <b>localizedTemplateName</b> will arrive as a localized name (e.g. &lt;template name&gt;_en_US).
-     * The database table stores the name and language information in separate fields, thus, the localized name as passed
-     * must be split, and the language information converted to a {@link Locale}.
-     * @param localizedTemplateName
-     * @return Object array of template information tokens (String/Locale)
-     */
-    private Object[] splitLocalizedName(String localizedTemplateName)
+    @Override public long getLastModified(Object object)
     {
-        Object[] tokens= new Object[2];
-        
-        //defaults
-        tokens[0] = localizedTemplateName;
-        tokens[1] = Locale.getDefault();
-        
-        if(isLocalizedName(localizedTemplateName))
+        assertValidTemplateNameParameter(object);
+        if(object instanceof TemplateSource)
         {
             
-            Pattern pattern= Pattern.compile(LOCALIZED_NAME_REGEX);
-            Matcher matcher = pattern.matcher(localizedTemplateName);
-            if(matcher.find())
-            {
-                String name=localizedTemplateName.substring(0, matcher.start());
-                String languageString=matcher.group(0);
-                String languageTag = languageString.substring(1).replace("_", "-");
-                Locale locale=Locale.forLanguageTag(languageTag);
-                tokens[0]= name;
-                tokens[1]= locale;
-            }
+            Date date= ((TemplateSource)object).getLastModified();
+            return (date == null)? -1 : date.getTime();
         }
-        
-        return tokens;
-    }
-    
-    private boolean isLocalizedName(String name)
-    {
-        if(name == null || name.isEmpty()){return false;}
-        return name.matches(".*"+LOCALIZED_NAME_REGEX);
-    }
-    
-
-    @Override
-    public long getLastModified(Object object)
-    {
-        assertValidTemplateSourceParameter(object);
-        
-        Date date= ((TemplateSource)object).getLastModified();
-        return (date == null)? -1 : date.getTime();
+        else
+        {
+            long time;
+            try (TemplateSourceDao dao = new TemplateSourceDao(dataSource.getConnection(), metadata))
+            {
+                TemplateSource source  = dao.queryByName((TemplateName)object);
+                time=source.getLastModified().getTime();
+            }
+            catch (Exception e) 
+            {
+                Throwable cause = (e.getCause() == null)?e : e.getCause();
+                throw new RuntimeException(cause.getMessage(), cause);
+            }
+            
+            return time;
+        }
             
     }
 
-    private void assertValidTemplateSourceParameter(Object object) throws IllegalArgumentException, NullPointerException
+    private void assertValidTemplateNameParameter(Object object) throws IllegalArgumentException, NullPointerException
     {
         if(object == null)
         {
-            throw new NullPointerException("Template parameter is null");
+            throw new NullPointerException("Template Name parameter is null");
         }
         
-        if(object instanceof TemplateSource == false)
+        if(object instanceof TemplateName == false)
         {
-            String string=String.format("IllegalArgument. Expected '%s', Got '%s'",TemplateSource.class,object);
+            String string=String.format("IllegalArgument. Expected '%s', Got '%s'",TemplateName.class,object);
             throw new IllegalArgumentException(string);
         }
     }
 
     @Override
-    public Reader getReader(Object source, String encoding) throws IOException
+    public Reader getReader(Object object, String encoding) throws IOException
     {
-        assertValidTemplateSourceParameter(source);
-        
-        return new StringReader(((TemplateSource)source).getSource());
+        assertValidTemplateNameParameter(object);
+        if(object instanceof TemplateSource)
+        {
+            return new StringReader(((TemplateSource)object).getSource());
+        }
+        else
+        {
+            Reader reader;
+            try (TemplateSourceDao dao = new TemplateSourceDao(dataSource.getConnection(), metadata))
+            {
+                TemplateSource source  = dao.queryByName((TemplateName)object);
+                reader= new StringReader(source.getSource());
+            }
+            catch (Exception e) 
+            {
+                Throwable cause = (e.getCause() == null)?e : e.getCause();
+                throw new IOException(cause.getMessage(), cause);
+            }
+            
+            return reader;
+        }
     }
 
     @Override
