@@ -77,7 +77,7 @@ public class DataSourceTemplateLoaderTest
             javax.sql.DataSource ds= createPostgreSqlDataSource(); //createSqLiteDataSource();
             JdbcMetaData meta  = new JdbcMetaData("public", TABLE_NAME);
             DataSourceTemplateLoader loader= new DataSourceTemplateLoader(ds,meta);
-
+            
             
             Version version = new Version(2, 3, 23);
             Configuration config= new Configuration(version);
