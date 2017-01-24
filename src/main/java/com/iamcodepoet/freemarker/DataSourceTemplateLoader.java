@@ -86,21 +86,32 @@ public class DataSourceTemplateLoader implements TemplateLoader
         }
         else
         {
-            long time;
-            try (TemplateSourceDao dao = new TemplateSourceDao(dataSource.getConnection(), metadata))
+            try
             {
-                TemplateSource source  = dao.queryByName((TemplateName)object);
-                time=source.getLastModified().getTime();
+                TemplateSource source = loadSourceFromDatabse(object);
+                return source.getLastModified().getTime();
             }
-            catch (Exception e) 
+            catch(IOException e)
             {
-                Throwable cause = (e.getCause() == null)?e : e.getCause();
-                throw new RuntimeException(cause.getMessage(), cause);
+                return -1; //throw exception instead?
             }
-            
-            return time;
         }
             
+    }
+
+    private TemplateSource loadSourceFromDatabse(Object object) throws IOException
+    {
+        TemplateSource source;
+        try (TemplateSourceDao dao = new TemplateSourceDao(dataSource.getConnection(), metadata))
+        {
+            source= dao.queryByName((TemplateName)object);
+        }
+        catch (Exception e)
+        {
+            Throwable cause = (e.getCause() == null)?e : e.getCause();
+            throw new IOException(cause.getMessage(), cause);
+        }
+        return source;
     }
 
     private void assertValidTemplateNameParameter(Object object) throws IllegalArgumentException, NullPointerException
@@ -127,19 +138,10 @@ public class DataSourceTemplateLoader implements TemplateLoader
         }
         else
         {
-            Reader reader;
-            try (TemplateSourceDao dao = new TemplateSourceDao(dataSource.getConnection(), metadata))
-            {
-                TemplateSource source  = dao.queryByName((TemplateName)object);
-                reader= new StringReader(source.getSource());
-            }
-            catch (Exception e) 
-            {
-                Throwable cause = (e.getCause() == null)?e : e.getCause();
-                throw new IOException(cause.getMessage(), cause);
-            }
+            TemplateSource source = loadSourceFromDatabse(object);
             
-            return reader;
+            return new StringReader(source.getSource());
+            
         }
     }
 
