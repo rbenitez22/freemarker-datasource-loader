@@ -19,7 +19,7 @@ import com.iamcodepoet.freemarker.util.Experimental;
 import java.util.Locale;
 
 /**
- *A specification for a (localizable) template name.
+ *A specification for a (localizable) template name.  
  * @author Roberto C. Benitez
  */
 @Experimental(description = "Should this be more generic (e.g. LocalizableName)?")
