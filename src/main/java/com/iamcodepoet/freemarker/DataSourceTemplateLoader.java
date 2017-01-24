@@ -52,7 +52,7 @@ public class DataSourceTemplateLoader implements TemplateLoader
         
     }
     
-    @Experimental(description = "This implementation is somewhat of a hack. queryByName actually returns a TemplateSource (which extends TemplateName)--consider reteurn just a name instead? ")
+    @Experimental(description = "This implementation is somewhat of a hack. queryByName actually returns a TemplateSource (which extends TemplateName)--consider return just a name instead? ")
     @Override public TemplateName findTemplateSource(String localizedTemplateName) throws IOException
     {
         if(localizedTemplateName == null || localizedTemplateName.isEmpty())
@@ -60,13 +60,11 @@ public class DataSourceTemplateLoader implements TemplateLoader
             throw new IOException("Cannot find template with a NULL or EMPTY name");
         }
         
-        TemplateName searchName=DefaultTemplateName.fromLocalizedName(localizedTemplateName);
-        
         TemplateName name;
         
         try (TemplateSourceDao dao= new TemplateSourceDao(dataSource.getConnection(),metadata))
         {
-            name = dao.queryByName(searchName);
+            name = dao.getTemplateNameForLocalizedName(localizedTemplateName);
         }
         catch (Exception e) 
         {
