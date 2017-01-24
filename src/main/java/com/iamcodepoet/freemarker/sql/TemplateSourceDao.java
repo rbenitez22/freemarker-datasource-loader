@@ -50,11 +50,11 @@ public class TemplateSourceDao implements AutoCloseable
     }
     
     /**
-     * This method performs a name search using the {@link #queryByName(com.iamcodepoet.freemarker.TemplateName) method.
-     * Essentially, this methods service to confirm that named template exists in the database.
+     * This method performs a name search using the {@link #queryByName(com.iamcodepoet.freemarker.TemplateName)} method.
+     * Essentially, this methods serves to confirm that named template exists in the database.
      * @param localizedName
      * @return 
-     * @throws java.sql.SQLException 
+     * @throws java.sql.SQLException throw by driver should any error occur, such as invalid table/column names.
      * @throws java.io.IOException thrown if the named template does not exist
      */
     @Experimental
@@ -68,13 +68,13 @@ public class TemplateSourceDao implements AutoCloseable
     /**
      * Query a template by Name (and {@link Locale}).  Whilst Freemarker passes a 
      * localized template name, it (may) be best to store/handle the template name and locale information separately.
-     * As such, This method takes a name and {@link Locale} to perform a query.  The expectation is that a database record 
+     * As such, this method takes a name and {@link Locale} to perform a query.  The expectation is that a database record 
      * may have many records with the same template name (but different locales).  Furthermore, it is expected (nay, required), that the {@link Locale} information
      * be stored as a <a href="https://tools.ietf.org/html/bcp47">well-formed IETF BCP 47 language tag</a>--this is provided by Java via {@link  Locale#toLanguageTag()}
      * @param name
      * @return {@link TemplateSource}
-     * @throws SQLException
-     * @throws IOException 
+     * @throws SQLException throw by driver should any error occur, such as invalid table/column names.
+     * @throws IOException throw if named template is not found.
      */
     public TemplateSource queryByName(TemplateName name) throws SQLException, IOException
     {
@@ -85,6 +85,7 @@ public class TemplateSourceDao implements AutoCloseable
         String localeColumn = quoteIdentifierName(metadata.getLocaleColumn());
         String where = String.format(" WHERE %s = ? AND %s= ?", nameColumn, localeColumn);
         String sql = getSelectSql() + " " + where;
+        
         try (final PreparedStatement stmt = connection.prepareStatement(sql)) 
         {
             stmt.setString(1, name.getName());
@@ -140,6 +141,12 @@ public class TemplateSourceDao implements AutoCloseable
         return name;
     }
 
+    /**
+     * This method should help generate a primary value/sequence if the user has not provided one.
+     * A Sequence generator may be best--with implementations for common database sequence generators.
+     * @return row count in the templates table
+     * @throws SQLException 
+     */
     private long getCount() throws SQLException
     {
         long count;
@@ -230,6 +237,22 @@ public class TemplateSourceDao implements AutoCloseable
         try (final PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, templateName);
             stmt.setString(2, locale.toLanguageTag());
+            count = stmt.executeUpdate();
+        }
+        
+        return count;
+    }
+    
+    public int delete(JdbcTemplateSource source) throws SQLException
+    {
+        String idCol=quoteIdentifierName(metadata.getIdColumn());
+        String table = getFullTableName();
+        
+        String sql = String.format("DELETE FROM %s WHERE %s = ? ", table, idCol);
+        int count;
+        try (final PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, source.getId());
+            
             count = stmt.executeUpdate();
         }
         
