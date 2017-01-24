@@ -52,7 +52,9 @@ public class DataSourceTemplateLoader implements TemplateLoader
         
     }
     
-    @Experimental(description = "This implementation is somewhat of a hack. queryByName actually returns a TemplateSource (which extends TemplateName)--consider return just a name instead? ")
+    @Experimental(description = "This implementation is somewhat of a hack. "
+                                + "queryByName actually returns a TemplateSource (which extends TemplateName)--consider return just a name instead?"
+                                 + "HOWEVER? per TemplateLoader javadoc, perhaps should just return TemplateSource..???")
     @Override public TemplateName findTemplateSource(String localizedTemplateName) throws IOException
     {
         if(localizedTemplateName == null || localizedTemplateName.isEmpty())
