@@ -62,11 +62,9 @@ public class DataSourceTemplateLoader implements TemplateLoader
             throw new IOException("Cannot find template with a NULL or EMPTY name");
         }
         
-        TemplateName name;
-        
         try (TemplateSourceDao dao= new TemplateSourceDao(dataSource.getConnection(),metadata))
         {
-            name = dao.getTemplateNameForLocalizedName(localizedTemplateName);
+            return dao.getTemplateNameForLocalizedName(localizedTemplateName);
         }
         catch (Exception e) 
         {
@@ -74,7 +72,6 @@ public class DataSourceTemplateLoader implements TemplateLoader
             throw new IOException(root.getMessage(), root);
         }
         
-        return name;
     }
 
     @Override public long getLastModified(Object object)
@@ -103,17 +100,16 @@ public class DataSourceTemplateLoader implements TemplateLoader
 
     private TemplateSource loadSourceFromDatabse(Object object) throws IOException
     {
-        TemplateSource source;
         try (TemplateSourceDao dao = new TemplateSourceDao(dataSource.getConnection(), metadata))
         {
-            source= dao.queryByName((TemplateName)object);
+            return dao.queryByName((TemplateName)object);
         }
         catch (Exception e)
         {
             Throwable cause = (e.getCause() == null)?e : e.getCause();
             throw new IOException(cause.getMessage(), cause);
         }
-        return source;
+     
     }
 
     private void assertValidTemplateNameParameter(Object object) throws IllegalArgumentException, NullPointerException
