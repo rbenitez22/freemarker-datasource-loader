@@ -17,7 +17,6 @@
  */
 package com.iamcodepoet.freemarker.sql;
 
-import com.iamcodepoet.freemarker.DefaultTemplateName;
 import com.iamcodepoet.freemarker.TemplateName;
 import com.iamcodepoet.freemarker.TemplateSource;
 import com.iamcodepoet.freemarker.util.Experimental;
@@ -60,9 +59,9 @@ public class TemplateSourceDao implements AutoCloseable
     @Experimental
     public TemplateName getTemplateNameForLocalizedName(String localizedName) throws SQLException, IOException
     {
-        TemplateName searchName=DefaultTemplateName.fromLocalizedName(localizedName);
+        TemplateName searchName=TemplateName.fromLocalizedName(localizedName);
         
-        return queryByName(searchName);
+        return queryByName(searchName).getTemplateName();
     }
     
     /**
@@ -76,9 +75,9 @@ public class TemplateSourceDao implements AutoCloseable
      * @throws SQLException throw by driver should any error occur, such as invalid table/column names.
      * @throws IOException throw if named template is not found.
      */
-    public TemplateSource queryByName(TemplateName name) throws SQLException, IOException
+    public JdbcTemplateSource queryByName(TemplateName name) throws SQLException, IOException
     {
-        TemplateSource source;
+        JdbcTemplateSource source;
         
         String languageTag = name.getLocale().toLanguageTag();
         String nameColumn = quoteIdentifierName(metadata.getNameColumn());
@@ -200,9 +199,9 @@ public class TemplateSourceDao implements AutoCloseable
      * @return {@link TemplateSource}
      * @throws SQLException 
      */
-    private TemplateSource createSourceFromResultSet(final ResultSet rst) throws SQLException
+    private JdbcTemplateSource createSourceFromResultSet(final ResultSet rst) throws SQLException
     {
-        TemplateSource source = new JdbcTemplateSource();
+        JdbcTemplateSource source = new JdbcTemplateSource();
         source.setName(rst.getString(metadata.getNameColumn()));
         source.setSource(rst.getString(metadata.getSourceColumn()));
         source.setDateCreated(rst.getDate(metadata.getDateCreatedColumn()));
@@ -337,7 +336,7 @@ public class TemplateSourceDao implements AutoCloseable
             throw new SQLException("Locale field is null");
         }
         
-        if (exists(source))
+        if (exists(source.getTemplateName()))
         {
             String msg = String.format("Template '%s (%s)' already exists", source.getName(), source.getLocale().toLanguageTag());
             throw new SQLException(msg);
