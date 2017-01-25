@@ -32,6 +32,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import javax.naming.NamingException;
 import javax.sql.DataSource;
 import org.junit.Test;
 import org.junit.BeforeClass;
@@ -47,6 +48,7 @@ public class DataSourceTemplateLoaderTest
     public final static String URL_PREFIX="jdbc:sqlite://";
     public final static String DB_NAME="template-loader.db";
     public final static String TABLE_NAME="templates";
+    public final static String DATASOURCE_NAME="jdISbc/sandboxDB";
     
     private static String jdbcUrl;
     private static ConfigProvider config;
@@ -70,7 +72,8 @@ public class DataSourceTemplateLoaderTest
         }
     }
     
-    @Test public void testLoader() throws MalformedTemplateNameException, ParseException, IOException, TemplateException, SQLException
+    @Test public void testLoader() throws MalformedTemplateNameException, ParseException
+            , IOException, TemplateException, SQLException, NamingException
     {
         
             
@@ -83,9 +86,23 @@ public class DataSourceTemplateLoaderTest
             Configuration config= new Configuration(version);
             config.setTemplateLoader(loader);
             
-            testTemplate1(config);
+            for(int i=0;i<5;i++)
+            {
+                testTemplate1(config);
+                synchronized(this)
+                {
+                    try
+                    {
+                        this.wait(500);
+                    }
+                    catch(InterruptedException e)
+                    {
+                        e.printStackTrace();
+                    }
+                }
+            }
             
-            testTemplate2(config);
+            //testTemplate2(config);
       
     }
 
@@ -93,6 +110,7 @@ public class DataSourceTemplateLoaderTest
     {
         try
         {
+            File file;
             Template template2 = config.getTemplate("Cover Letter Template");
             HashMap<String,Object> model = new HashMap<>();
             model.put("hiringManager", "Miss Ada Byron");
@@ -147,7 +165,9 @@ public class DataSourceTemplateLoaderTest
         return ds;
     }
     
-    private DataSource createPostgreSqlDataSource() throws IOException
+   
+    
+    private static DataSource createPostgreSqlDataSource() throws IOException
     {
         PGSimpleDataSource ds=  new PGSimpleDataSource();
         
