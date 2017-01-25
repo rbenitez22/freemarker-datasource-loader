@@ -17,6 +17,7 @@
  */
 package com.iamcodepoet.freemarker.sql;
 
+import com.iamcodepoet.freemarker.TemplateName;
 import com.iamcodepoet.freemarker.TemplateSource;
 import java.util.Date;
 import java.util.Locale;
@@ -53,13 +54,11 @@ public class JdbcTemplateSource implements TemplateSource
         this.name = name;
     }
 
-    @Override
     public String getName()
     {
         return this.name;
     }
 
-    @Override
     public String getLocalizedName()
     {
         if(locale == null){locale = Locale.getDefault();}
@@ -117,7 +116,6 @@ public class JdbcTemplateSource implements TemplateSource
         return new Date(dateCreated.getTime());
     }
 
-    @Override
     public Locale getLocale()
     {
         return locale;
@@ -127,6 +125,11 @@ public class JdbcTemplateSource implements TemplateSource
     public void setLocale(Locale locale)
     {
         this.locale = locale;
+    }
+    
+    public TemplateName getTemplateName()
+    {
+        return new TemplateName(name, locale);
     }
 
     @Override
