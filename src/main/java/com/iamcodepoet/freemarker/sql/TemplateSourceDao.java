@@ -175,9 +175,9 @@ public class TemplateSourceDao implements AutoCloseable
      * @return List of template sources
      * @throws SQLException 
      */
-    public List<TemplateSource> query() throws SQLException
+    public List<JdbcTemplateSource> query() throws SQLException
     {
-        List<TemplateSource> sources = new ArrayList<>();
+        List<JdbcTemplateSource> sources = new ArrayList<>();
         String sql = getSelectSql();
         try (final PreparedStatement stmt = connection.prepareStatement(sql)) 
         {
@@ -185,7 +185,7 @@ public class TemplateSourceDao implements AutoCloseable
             {
                 while (rst.next()) 
                 {
-                    TemplateSource source = createSourceFromResultSet(rst);
+                    JdbcTemplateSource source = createSourceFromResultSet(rst);
                     sources.add(source);
                 }
             }
