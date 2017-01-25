@@ -19,12 +19,10 @@ package com.iamcodepoet.freemarker;
 
 import com.iamcodepoet.freemarker.sql.JdbcMetaData;
 import com.iamcodepoet.freemarker.sql.TemplateSourceDao;
-import com.iamcodepoet.freemarker.util.Experimental;
 import freemarker.cache.TemplateLoader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
-import java.util.Date;
 import javax.sql.DataSource;
 
 /**
@@ -52,9 +50,6 @@ public class DataSourceTemplateLoader implements TemplateLoader
         
     }
     
-    @Experimental(description = "This implementation is somewhat of a hack. "
-                                + "queryByName actually returns a TemplateSource (which extends TemplateName)--consider return just a name instead?"
-                                 + "HOWEVER? per TemplateLoader javadoc, perhaps should just return TemplateSource..???")
     @Override public TemplateName findTemplateSource(String localizedTemplateName) throws IOException
     {
         if(localizedTemplateName == null || localizedTemplateName.isEmpty())
@@ -77,32 +72,24 @@ public class DataSourceTemplateLoader implements TemplateLoader
     @Override public long getLastModified(Object object)
     {
         assertValidTemplateNameParameter(object);
-        if(object instanceof TemplateSource)
+        try
         {
-            
-            Date date= ((TemplateSource)object).getLastModified();
-            return (date == null)? -1 : date.getTime();
+            TemplateSource source = loadSourceFromDatabse((TemplateName)object);
+            return source.getLastModified().getTime();
         }
-        else
+        catch(IOException e)
         {
-            try
-            {
-                TemplateSource source = loadSourceFromDatabse(object);
-                return source.getLastModified().getTime();
-            }
-            catch(IOException e)
-            {
-                return -1; //throw exception instead?
-            }
+            return -1; //throw exception instead?
         }
+       
             
     }
 
-    private TemplateSource loadSourceFromDatabse(Object object) throws IOException
+    private TemplateSource loadSourceFromDatabse(TemplateName name) throws IOException
     {
         try (TemplateSourceDao dao = new TemplateSourceDao(dataSource.getConnection(), metadata))
         {
-            return dao.queryByName((TemplateName)object);
+            return dao.queryByName(name);
         }
         catch (Exception e)
         {
@@ -130,17 +117,9 @@ public class DataSourceTemplateLoader implements TemplateLoader
     public Reader getReader(Object object, String encoding) throws IOException
     {
         assertValidTemplateNameParameter(object);
-        if(object instanceof TemplateSource)
-        {
-            return new StringReader(((TemplateSource)object).getSource());
-        }
-        else
-        {
-            TemplateSource source = loadSourceFromDatabse(object);
+        TemplateSource source = loadSourceFromDatabse((TemplateName)object);
             
             return new StringReader(source.getSource());
-            
-        }
     }
 
     @Override
