@@ -22,7 +22,7 @@ import java.util.Locale;
  *A specification for a (localizable) template name.  
  * @author Roberto C. Benitez
  */
-@Experimental(description = "Should this be more generic (e.g. LocalizableName)?")
+@Experimental(description = "Should this be more generic (e.g. LocalizableName/TemplateMetadata)?")
 public interface TemplateName
 {
     String getName();
