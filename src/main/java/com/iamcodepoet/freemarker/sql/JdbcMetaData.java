@@ -18,7 +18,8 @@
 package com.iamcodepoet.freemarker.sql;
 
 /**
- *
+ *Holds database metadata--table and column names.  This class allows names
+ * to be defined in one place.
  * @author Roberto C. Benitez
  */
 public class JdbcMetaData
