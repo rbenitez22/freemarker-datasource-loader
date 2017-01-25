@@ -24,7 +24,7 @@ import java.util.Locale;
  *
  * @author Roberto C. Benitez
  */
-public interface TemplateSource extends TemplateName
+public interface TemplateSource 
 {
     void setName(String name);
     
