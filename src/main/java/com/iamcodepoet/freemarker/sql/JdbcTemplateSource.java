@@ -20,6 +20,7 @@ package com.iamcodepoet.freemarker.sql;
 import com.iamcodepoet.freemarker.TemplateSource;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Objects;
 
 
 public class JdbcTemplateSource implements TemplateSource
@@ -132,6 +133,53 @@ public class JdbcTemplateSource implements TemplateSource
     public String toString()
     {
         return getLocalizedName();
+    }
+
+    @Override
+    public int hashCode()
+    {
+        int hash = 5;
+        hash = 97 * hash + (int) (this.id ^ (this.id >>> 32));
+        hash = 97 * hash + Objects.hashCode(this.name);
+        hash = 97 * hash + Objects.hashCode(this.locale);
+        hash = 97 * hash + Objects.hashCode(this.source);
+        hash = 97 * hash + Objects.hashCode(this.dateCreated);
+        hash = 97 * hash + Objects.hashCode(this.lastModified);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final JdbcTemplateSource other = (JdbcTemplateSource) obj;
+        if (this.id != other.id) {
+            return false;
+        }
+        if (!Objects.equals(this.name, other.name)) {
+            return false;
+        }
+        if (!Objects.equals(this.source, other.source)) {
+            return false;
+        }
+        if (!Objects.equals(this.locale, other.locale)) {
+            return false;
+        }
+        if (!Objects.equals(this.dateCreated, other.dateCreated)) {
+            return false;
+        }
+        if (!Objects.equals(this.lastModified, other.lastModified)) {
+            return false;
+        }
+        return true;
     }
     
     
